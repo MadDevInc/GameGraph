@@ -26,7 +26,7 @@ Requisitos: [Claude Code](https://claude.com/claude-code) e **Python 3.10+**.
 
 No Claude Code:
 ```
-/plugin marketplace add SEU_USUARIO/GameGraph
+/plugin marketplace add MadDevInc/GameGraph
 /plugin install gamegraph@maddev-studios
 ```
 
