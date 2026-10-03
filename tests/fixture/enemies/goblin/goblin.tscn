@@ -1,0 +1,33 @@
+[gd_scene load_steps=5 format=3 uid="uid://b1goblin"]
+
+[ext_resource type="Script" path="res://enemies/goblin/goblin.gd" id="1_g"]
+[ext_resource type="Resource" path="res://enemies/goblin/goblin_data.tres" id="2_d"]
+[ext_resource type="PackedScene" path="res://enemies/base/hitbox.tscn" id="3_h"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
+size = Vector2(16, 24)
+
+[node name="Goblin" type="CharacterBody2D"]
+script = ExtResource("1_g")
+data = ExtResource("2_d")
+metadata/_edit_group_ = {
+"a": [1, 2],
+"b": 3
+}
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_1")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+
+[node name="StateMachine" type="Node" parent="."]
+
+[node name="Idle" type="Node" parent="StateMachine"]
+
+[node name="Chase" type="Node" parent="StateMachine"]
+
+[node name="Hitbox" parent="." instance=ExtResource("3_h")]
+
+[connection signal="attacked" from="." to="StateMachine" method="_on_attacked"]

@@ -1,0 +1,14 @@
+{
+  "name": "maddev-studios",
+  "description": "Plugins da MadDev Studios para desenvolvimento de jogos com IA",
+  "owner": {
+    "name": "MadDev Studios"
+  },
+  "plugins": [
+    {
+      "name": "gamegraph",
+      "source": "./plugins/gamegraph",
+      "description": "GameGraph: a IA mapeia como o seu jogo Godot é feito (processos, passos e arquivos reais) e os agentes seguem esse mapa. Interface visual para editar."
+    }
+  ]
+}

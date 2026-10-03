@@ -1,0 +1,10 @@
+config_version=5
+
+[application]
+
+config/name="Fixture Game"
+run/main_scene="res://enemies/goblin/goblin.tscn"
+
+[autoload]
+
+Events="*res://enemies/base/events.gd"

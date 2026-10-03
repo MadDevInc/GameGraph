@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GameGraph</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<style>
+:root{--bg:#16181d;--panel:#1e2128;--card:#23272f;--line:#2c313a;--fg:#d7dae0;--mute:#8a919c;--acc:#5aa9ff;
+  --process:#e06c75;--system:#5aa9ff;--entity:#e0a84a;--scene:#7bc96f;--script:#5aa9ff;--data:#c678dd;--asset:#8a919c;--bad:#ff5c5c;
+  --kw:#c678dd;--str:#98c379;--num:#d19a66;--com:#6a7380;--ann:#e5c07b;--fn:#61afef}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f4f5f7;--panel:#fff;--card:#fff;--line:#dde0e5;--fg:#23262c;--mute:#6b7280;
+  --kw:#a626a4;--str:#50a14f;--num:#986801;--com:#a0a1a7;--ann:#c18401;--fn:#4078f2}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 system-ui,Segoe UI,sans-serif;height:100vh;display:flex;flex-direction:column}
+header{display:flex;gap:6px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.1;margin-right:8px}
+.brand b{font-size:15px}.brand small{color:var(--mute);font-size:10px;letter-spacing:.04em}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+button,input,textarea,select{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:4px 8px}
+button{cursor:pointer;white-space:nowrap}button:hover{border-color:var(--acc)}button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.seg{display:inline-flex}.seg button{border-radius:0}.seg button:first-child{border-radius:4px 0 0 4px}.seg button:last-child{border-radius:0 4px 4px 0}
+#help{font-weight:bold;border-color:var(--acc);color:var(--acc)}
+main{flex:1;display:flex;min-height:0}
+#explorer{flex:0 0 240px;border-right:1px solid var(--line);display:flex;flex-direction:column;background:var(--panel)}
+.ptitle{padding:6px 8px 0;font-size:11px;text-transform:uppercase;color:var(--mute);letter-spacing:.05em}
+#tree{overflow:auto;flex:1;padding:4px 0}
+.dir>summary{cursor:pointer;padding:1px 6px;color:var(--mute);list-style:none}.dir>summary::before{content:"▸ "}.dir[open]>summary::before{content:"▾ "}
+.dir>.kids{padding-left:12px}
+.file{padding:1px 8px 1px 18px;cursor:grab;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file:hover{background:var(--line)}.file.sel{background:var(--acc);color:#fff}
+.k-scene::before{content:"◆ ";color:var(--scene)}.k-script::before{content:"● ";color:var(--script)}
+.k-resource::before,.k-resource_binary::before{content:"■ ";color:var(--data)}
+.file:not(.k-scene):not(.k-script):not(.k-resource):not(.k-resource_binary)::before{content:"· ";color:var(--asset)}
+#graphwrap{flex:1;position:relative;min-width:0;overflow:hidden}#cy{position:absolute;inset:0}
+#legend{position:absolute;left:10px;bottom:8px;display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--mute);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 8px}
+#legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+#banner{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--acc);color:#fff;padding:4px 12px;border-radius:4px;display:none;z-index:2}
+#side{flex:0 0 min(460px,40vw);border-left:1px solid var(--line);display:flex;flex-direction:column;background:var(--panel);min-width:0}
+#tabs{display:flex;border-bottom:1px solid var(--line)}#tabs button{border:0;border-radius:0;flex:1;background:none}#tabs button.on{border-bottom:2px solid var(--acc);color:var(--acc)}
+#pane{flex:1;overflow:auto;padding:10px}
+h2{font-size:14px;margin:0 0 8px}h3{font-size:11px;text-transform:uppercase;color:var(--mute);margin:14px 0 4px;letter-spacing:.05em}
+.tip{color:var(--mute);font-size:12px;margin:4px 0}
+table{border-collapse:collapse;width:100%}td{border-bottom:1px solid var(--line);padding:2px 6px;vertical-align:top;word-break:break-all}td:first-child{color:var(--mute);width:35%;word-break:normal}
+.code{font:12px/1.5 Consolas,monospace;white-space:pre;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:4px}
+.code .ln{display:inline-block;width:3.5em;color:var(--mute);text-align:right;padding-right:10px;user-select:none}
+.code .hit{background:rgba(229,192,123,.25)}
+.t-kw{color:var(--kw)}.t-str{color:var(--str)}.t-num{color:var(--num)}.t-com{color:var(--com);font-style:italic}.t-ann{color:var(--ann)}.t-fn{color:var(--fn)}
+.tree-n{font-family:Consolas,monospace;white-space:pre;cursor:pointer}.tree-n:hover{color:var(--acc)}.tree-n .ty{color:var(--mute)}
+.chip{display:inline-block;padding:0 6px;border-radius:8px;font-size:11px;border:1px solid var(--line);margin-right:4px}
+.link{cursor:pointer;color:var(--acc)}.missing{color:var(--bad)}
+.row{display:flex;gap:6px;align-items:center;margin:4px 0}.row>input,.row>textarea{flex:1;min-width:0}
+textarea{width:100%;min-height:70px;resize:vertical}
+pre.ctx{white-space:pre-wrap;font:12px/1.5 Consolas,monospace}
+.list .item{display:flex;gap:6px;align-items:center;padding:3px 0;border-bottom:1px solid var(--line)}
+.list .item:hover{color:var(--acc);cursor:pointer}
+.dot{width:10px;height:10px;border-radius:2px;flex:0 0 10px}
+/* guide */
+#guide{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+#guide .box{background:var(--panel);border:1px solid var(--line);border-radius:8px;max-width:820px;width:100%;max-height:90vh;display:flex;flex-direction:column}
+#guide .gh{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+#guide .gb{overflow:auto;padding:4px 18px 16px;line-height:1.6}
+#guide h4{margin:16px 0 4px;font-size:14px}#guide p,#guide li{margin:4px 0}
+#guide kbd{border:1px solid var(--line);border-radius:3px;padding:0 4px;font-size:11px;background:var(--bg)}
+#guide nav{display:flex;gap:6px;flex-wrap:wrap;padding:8px 16px;border-bottom:1px solid var(--line)}
+#guide nav a{color:var(--acc);cursor:pointer;font-size:12px}
+@media (max-width:900px){#explorer{display:none}#side{flex-basis:50vw}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>GameGraph</b><small>by MadDev Studios</small></div>
+  <span id="title" style="color:var(--mute);margin-right:6px"></span>
+  <div class="seg" title="Escolha o que ver no grafo">
+    <button id="vProc" class="on" title="Processos, sistemas e entidades criados pela IA (e por você)">Processos</button>
+    <button id="vArch" title="Dependências reais entre os arquivos do Godot (detectadas automaticamente)">Arquitetura</button>
+  </div>
+  <div class="sep"></div>
+  <input id="find" placeholder="Buscar nó…" style="width:130px" title="Digite e aperte Enter para ir até o nó">
+  <button id="bAdd" title="Criar um nó novo (ou dê duplo clique no espaço vazio)">+ Nó</button>
+  <button id="bRel" title="Selecione um nó, clique aqui e depois clique no nó de destino">Relacionar…</button>
+  <button id="bOrg" title="Reorganiza todos os cartões em grade, por tipo">Organizar</button>
+  <button id="bFit" title="Enquadrar tudo na tela">Enquadrar</button>
+  <div class="sep"></div>
+  <button id="bRules" title="Regras do jogo e instruções para os agentes de IA">Regras</button>
+  <button id="bCtx" title="Ver o contexto completo que a IA recebe">Contexto IA</button>
+  <button id="bRescan" title="Reler os arquivos do projeto Godot agora">Reescanear</button>
+  <button id="help" title="Guia de uso">? Guia</button>
+</header>
+<main>
+  <aside id="explorer">
+    <div class="ptitle">Arquivos do projeto</div>
+    <div style="padding:6px"><input id="filter" placeholder="Filtrar arquivos…" style="width:100%"></div>
+    <div id="tree"></div>
+  </aside>
+  <section id="graphwrap"><div id="cy"></div><div id="banner"></div><div id="legend"></div></section>
+  <aside id="side">
+    <div id="tabs"><button data-t="inspector" class="on">Inspetor</button><button data-t="file">Arquivo</button><button data-t="context">Contexto IA</button></div>
+    <div id="pane"></div>
+  </aside>
+</main>
+
+<div id="guide"><div class="box">
+  <div class="gh"><b>Guia do GameGraph</b><button id="gClose">Fechar</button></div>
+  <nav>
+    <a data-g="g1">O que é</a><a data-g="g2">Telas</a><a data-g="g3">Processos</a><a data-g="g4">Arquitetura</a>
+    <a data-g="g5">Editar</a><a data-g="g6">Arquivos</a><a data-g="g7">Regras e IA</a><a data-g="g8">Atalhos</a>
+  </nav>
+  <div class="gb">
+    <h4 id="g1">O que é o GameGraph</h4>
+    <p>Um mapa de <b>como o seu jogo é feito</b>. A IA lê o projeto Godot e monta <b>processos</b> (ex.: <i>Criar inimigo</i>) com os passos e os arquivos certos de cada um. Você revisa e ajusta aqui. Depois, qualquer agente de IA lê esse mapa antes de trabalhar e segue o jeito do seu projeto.</p>
+    <p>Para gerar ou atualizar o mapa, use <kbd>/gamephy</kbd> no Claude Code. Esta tela serve para <b>ler e editar</b>.</p>
+
+    <h4 id="g2">As três áreas</h4>
+    <ul>
+      <li><b>Esquerda: Arquivos do projeto.</b> A pasta real do Godot. Clique para abrir um arquivo. Arraste um arquivo para um cartão para ligá-lo.</li>
+      <li><b>Centro: o grafo.</b> Tem duas vistas: <b>Processos</b> e <b>Arquitetura</b> (botões no topo).</li>
+      <li><b>Direita: o painel.</b>
+        <ul>
+          <li><b>Inspetor:</b> edita o nó selecionado.</li>
+          <li><b>Arquivo:</b> mostra o conteúdo do arquivo (código, cena, recurso).</li>
+          <li><b>Contexto IA:</b> o texto exato que a IA recebe.</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h4 id="g3">Vista Processos</h4>
+    <p>Cada nó é um <b>cartão</b>. Dentro dele estão os arquivos ligados, cada um com o texto que explica para que serve.</p>
+    <ul>
+      <li><span style="color:var(--process)">■</span> <b>Processo</b>: como fazer algo no jogo (Criar inimigo, Criar arma…). Tem passos em ordem.</li>
+      <li><span style="color:var(--system)">■</span> <b>Sistema</b>: peças centrais (autoloads, managers, event bus).</li>
+      <li><span style="color:var(--entity)">■</span> <b>Entidade</b>: coisas concretas (Goblin, Player). Servem de exemplo.</li>
+    </ul>
+    <p>As setas entre cartões são <b>relações de design</b> (ex.: <i>Criar inimigo → exemplo → Goblin</i>). Se um arquivo aparece em vermelho, ele não existe mais no projeto.</p>
+
+    <p><b>⚠ revisar</b> (borda laranja tracejada): algum arquivo ligado ao nó mudou desde a última revisão. Os passos podem estar velhos. Abra o nó, confira e clique em <b>Marcar como revisado</b>. Os agentes também recebem esse aviso, para não seguirem passos desatualizados.</p>
+
+    <h4 id="g4">Vista Arquitetura</h4>
+    <p>Mostra as ligações <b>reais</b> entre os arquivos, detectadas sozinhas, sem precisar da IA:</p>
+    <ul>
+      <li><b>Código</b> (azul): herança e preload. Ex.: <i>goblin.gd herda base_enemy.gd</i>.</li>
+      <li><b>Arquivos</b> (verde): cena que usa script, instancia outra cena ou referencia um recurso.</li>
+    </ul>
+    <p>Use os botões <b>Código</b> e <b>Arquivos</b> para ligar e desligar cada tipo. Clique num arquivo para ver o conteúdo.</p>
+
+    <h4 id="g5">Editar o grafo</h4>
+    <ul>
+      <li><b>Selecionar:</b> clique no título do cartão. O Inspetor abre à direita.</li>
+      <li><b>Mudar:</b> no Inspetor dá para trocar nome, tipo, notas, passos (um por linha) e o texto de cada conexão.</li>
+      <li><b>Criar:</b> botão <b>+ Nó</b> ou duplo clique no espaço vazio.</li>
+      <li><b>Relacionar:</b> selecione um cartão, clique em <b>Relacionar…</b>, clique no outro cartão e escreva a relação.</li>
+      <li><b>Apagar:</b> botão <b>Apagar</b> no Inspetor. Os arquivos do Godot nunca são tocados.</li>
+      <li><b>Mover:</b> arraste o cartão pelo título. <b>Organizar</b> refaz a grade.</li>
+    </ul>
+    <p><b>Suas edições são protegidas.</b> Quando a IA rodar <kbd>/gamephy --update</kbd>, ela não sobrescreve nós que você editou e não recria os que você apagou.</p>
+
+    <h4 id="g6">Ligar arquivos</h4>
+    <p>Arraste um arquivo da lista da esquerda para cima de um cartão. O tipo é reconhecido sozinho: <b>.tscn</b> vira <i>cena</i>, <b>.gd</b> vira <i>script</i> e <b>.tres</b> vira <i>dados</i>. Se soltar no espaço vazio, um cartão novo é criado.</p>
+    <p>Ao clicar num arquivo, a aba <b>Arquivo</b> mostra:</p>
+    <ul>
+      <li><b>.gd:</b> código colorido com busca, classe, herança, exports, sinais e funções;</li>
+      <li><b>.tscn:</b> árvore de nós da cena, propriedades e recursos;</li>
+      <li><b>.tres:</b> tipo e valores.</li>
+    </ul>
+
+    <h4 id="g7">Regras e IA</h4>
+    <p>Em <b>Regras</b> ficam as regras do jogo (ex.: <i>todo inimigo herda BaseEnemy</i>) e as instruções para os agentes. Tudo isso entra no começo do contexto da IA.</p>
+    <p><b>Contexto IA</b> mostra o que um agente recebe:</p>
+    <ul>
+      <li><b>sem nó selecionado:</b> o mapa do jogo inteiro (é o arquivo <kbd>gamegraph-out/CONTEXT.md</kbd>);</li>
+      <li><b>com um nó selecionado:</b> o detalhe daquele nó, com árvore de cenas, scripts e dados. Marque <i>incluir código</i> para mandar os scripts completos.</li>
+    </ul>
+    <p>O projeto é observado: se você mudar arquivos no Godot, a tela atualiza sozinha.</p>
+
+    <h4 id="g8">Atalhos</h4>
+    <ul>
+      <li><b>Rolar:</b> zoom.</li>
+      <li><b>Arrastar o fundo:</b> mover a tela.</li>
+      <li><b>Duplo clique no fundo:</b> novo nó.</li>
+      <li><b>Buscar nó + Enter:</b> vai até ele.</li>
+      <li><kbd>Esc</kbd>: cancela o Relacionar ou fecha este guia.</li>
+    </ul>
+  </div>
+</div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const api = (p, o) => fetch(p, o).then(r => r.headers.get("content-type").includes("json") ? r.json() : r.text());
+const ROLE = {scene:"scene", scene_binary:"scene", script:"script", csharp:"script", resource:"data", resource_binary:"data"};
+const ROLE_PT = {scene:"cena", script:"script", data:"dados", asset:"asset", doc:"doc"};
+const KIND_PT = {process:"Processo", system:"Sistema", entity:"Entidade"};
+const FILEKIND_PT = {scene:"cena", script:"script", resource:"recurso", resource_binary:"recurso binário", scene_binary:"cena binária", image:"imagem", audio:"áudio", shader:"shader", font:"fonte", project:"projeto", text:"texto", csharp:"C#", other:"outro"};
+const EDGE_PT = {inherits:"herda", references:"referencia", uses:"usa", instances:"instancia"};
+const COLOR = k => getComputedStyle(document.documentElement).getPropertyValue("--" + k).trim();
+let IDX, D, cy, view = "proc", sel = null, relFrom = null, tab = "inspector", openFile = null, layers = {code:true, file:true};
+
+const base = p => p.split("/").pop();
+const roleOf = p => ROLE[IDX.files[p]?.kind] || "asset";
+const fileColor = p => ({scene:"scene", script:"script", data:"data"})[roleOf(p)] || "asset";
+const uid = () => Math.random().toString(36).slice(2, 10);
+const save = () => api("/api/design", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(D)});
+const nodeById = id => D.nodes.find(n => n.id === id);
+// linked files whose content changed since the node was last reviewed
+const staleOf = id => D.links.filter(l => l.node === id && l.hash && IDX.files[l.file] && IDX.files[l.file].hash !== l.hash).map(l => l.file);
+function flash(msg) { $("#banner").textContent = msg; $("#banner").style.display = "block"; clearTimeout(flash.t); flash.t = setTimeout(() => $("#banner").style.display = "none", 2500); }
+
+async function load() {
+  [IDX, D] = await Promise.all([api("/api/index"), api("/api/design")]);
+  $("#title").textContent = IDX.project.name || "";
+  renderTree(); renderGraph(); renderSide();
+  let seen = false; try { seen = localStorage.getItem("gg-guide-seen"); } catch (e) {}
+  if (!seen) openGuide();
+}
+
+// ---------- Project explorer ----------
+function renderTree() {
+  const f = $("#filter").value.toLowerCase(), root = {};
+  for (const p of Object.keys(IDX.files)) {
+    if (f && !p.toLowerCase().includes(f)) continue;
+    const parts = p.slice(6).split("/"); let n = root;
+    parts.slice(0, -1).forEach(d => n = n[d + "/"] ??= {});
+    n[parts.at(-1)] = p;
+  }
+  const html = n => Object.keys(n).sort((a, b) => (b.endsWith("/") - a.endsWith("/")) || a.localeCompare(b)).map(k =>
+    k.endsWith("/") ? `<details class="dir" ${f ? "open" : ""}><summary>${esc(k.slice(0, -1))}</summary><div class="kids">${html(n[k])}</div></details>`
+      : `<div class="file k-${IDX.files[n[k]].kind}${openFile === n[k] ? " sel" : ""}" draggable="true" data-p="${esc(n[k])}" title="${esc(n[k])}\nArraste para um cartão para ligar">${esc(k)}</div>`).join("");
+  $("#tree").innerHTML = html(root) || "<p class='tip' style='padding:0 8px'>Nenhum arquivo.</p>";
+}
+$("#filter").oninput = renderTree;
+$("#tree").addEventListener("click", e => { const p = e.target.dataset?.p; if (p) showFile(p); });
+$("#tree").addEventListener("dragstart", e => e.dataTransfer.setData("text/gg-file", e.target.dataset.p));
+
+// ---------- Graph: layout helpers ----------
+const ROW = 24, PAD_TOP = 18, KINDS = ["process", "system", "entity"];
+const linksOf = id => D.links.filter(l => l.node === id);
+const childLabel = l => (l.label ? l.label + "  ·  " : (ROLE_PT[l.role] || l.role) + "  ·  ") + base(l.file);
+function cardSize(n) {
+  const ls = linksOf(n.id);
+  const w = Math.max(n.label.length * 9 + 40, ...ls.map(l => childLabel(l).length * 6.3 + 50), 180);
+  return {w, h: PAD_TOP + Math.max(1, ls.length) * ROW + 10};
+}
+// grid by kind: processes on top, then systems, then entities; wraps into columns
+function autoLayout(onlyMissing) {
+  const W = Math.max(900, cy ? cy.width() / Math.max(cy.zoom(), 0.3) : 1200);
+  let y = 0;
+  for (const k of [...KINDS, undefined]) {
+    const group = D.nodes.filter(n => (KINDS.includes(n.kind) ? n.kind : undefined) === k).sort((a, b) => a.label.localeCompare(b.label));
+    if (!group.length) continue;
+    let x = 0, rowH = 0;
+    for (const n of group) {
+      const s = cardSize(n);
+      if (x > 0 && x + s.w > W) { x = 0; y += rowH + 60; rowH = 0; }
+      if (!onlyMissing || !n.pos) n.pos = {x, y};
+      x += s.w + 50; rowH = Math.max(rowH, s.h);
+    }
+    y += rowH + 110;
+  }
+}
+
+function elementsProc() {
+  const els = [];
+  for (const n of D.nodes) {
+    const ls = linksOf(n.id), p = n.pos || {x:0, y:0};
+    const st = staleOf(n.id).length;
+    els.push({data:{id:n.id, label:(n.kind === "process" ? n.label.toUpperCase() : n.label) + (st ? "  ⚠ revisar" : ""), stale:st > 0, design:1, nk:KINDS.includes(n.kind) ? n.kind : "entity", empty:!ls.length},
+              position:{x:p.x, y:p.y}});
+    ls.forEach((l, i) => els.push({data:{id:"c:" + n.id + "|" + l.file, parent:n.id, label:childLabel(l) + (l.hash && IDX.files[l.file] && IDX.files[l.file].hash !== l.hash ? "  ⚠ mudou" : ""), path:l.file, fk:fileColor(l.file), missing:!IDX.files[l.file]},
+      position:{x:p.x, y:p.y + PAD_TOP + i * ROW}, grabbable:false}));
+  }
+  for (const r of D.relations) if (nodeById(r.source) && nodeById(r.target))
+    els.push({data:{id:"r:" + r.id, source:r.source, target:r.target, label:r.label, et:"design"}});
+  return els;
+}
+function elementsArch() {
+  const els = [], seen = new Set();
+  const add = p => { if (!seen.has(p)) { seen.add(p); els.push({data:{id:"f:" + p, label:base(p), path:p, fk:fileColor(p), missing:!IDX.files[p], arch:1}}); } };
+  for (const e of IDX.edges) {
+    if (!layers[e.kind]) continue;
+    add(e.source); add(e.target);
+    els.push({data:{id:`e:${e.source}>${e.target}>${e.type}`, source:"f:" + e.source, target:"f:" + e.target, label:EDGE_PT[e.type] || e.type, et:e.kind}});
+  }
+  return els;
+}
+
+const STYLE = () => [
+  {selector:"node", style:{label:"data(label)", color:COLOR("fg"), "font-size":11, "text-valign":"center", "text-halign":"right", "text-margin-x":6, width:10, height:10, shape:"round-rectangle",
+    "background-color":e => COLOR(e.data("fk") || "asset")}},
+  {selector:"node[arch]", style:{"text-halign":"center", "text-valign":"bottom", "text-margin-x":0, "text-margin-y":4, width:14, height:14, shape:"ellipse"}},
+  {selector:"node[design]", style:{shape:"round-rectangle", "text-valign":"top", "text-halign":"center", "text-margin-x":0, "text-margin-y":-4, "font-size":13, "font-weight":"bold", color:"#fff", "text-background-color":e => COLOR(e.data("nk")), "text-background-opacity":1, "text-background-padding":5, "text-background-shape":"round-rectangle",
+    "background-color":COLOR("card"), "background-opacity":1, "border-width":2, "border-color":e => COLOR(e.data("nk")),
+    padding:12, "compound-sizing-wrt-labels":"include", "min-width":160, "min-height":20}},
+  {selector:"node[design][?empty]", style:{width:"label", height:22, padding:10, "text-valign":"center", "text-margin-y":0, "text-background-opacity":0, "background-color":e => COLOR(e.data("nk"))}},
+  {selector:"node[nk='process']", style:{"font-size":14}},
+  {selector:"node[design]:parent", style:{"background-color":e => COLOR(e.data("nk")), "background-opacity":0.12}},
+  {selector:"node[design][?stale]", style:{"border-style":"dashed", "border-width":3, "border-color":"#f0a020"}},
+  {selector:"node[?missing]", style:{"background-color":COLOR("bad"), color:COLOR("bad")}},
+  {selector:"node:selected", style:{"border-width":3, "border-color":COLOR("acc"), "border-style":"solid"}},
+  {selector:"edge", style:{width:1.5, "curve-style":"bezier", "target-arrow-shape":"triangle", "arrow-scale":0.9, label:"data(label)", "font-size":11, color:COLOR("fg"),
+    "text-background-color":COLOR("bg"), "text-background-opacity":0.9, "text-background-padding":3, "text-background-shape":"round-rectangle",
+    "line-color":COLOR("mute"), "target-arrow-color":COLOR("mute")}},
+  {selector:"edge[et='design']", style:{width:2.5, "line-color":COLOR("entity"), "target-arrow-color":COLOR("entity"), "curve-style":"unbundled-bezier", "control-point-distances":40}},
+  {selector:"edge[et='code']", style:{"line-color":COLOR("script"), "target-arrow-color":COLOR("script"), "font-size":9}},
+  {selector:"edge[et='file']", style:{"line-color":COLOR("scene"), "target-arrow-color":COLOR("scene"), "font-size":9}},
+  {selector:".faded", style:{opacity:0.15}},
+];
+
+function renderGraph(fit) {
+  const vp = cy && !fit && {zoom:cy.zoom(), pan:cy.pan()};
+  cy?.destroy();
+  if (view === "proc" && D.nodes.some(n => !n.pos)) { autoLayout(true); save(); }
+  cy = cytoscape({container:$("#cy"), elements:view === "proc" ? elementsProc() : elementsArch(), layout:{name:"preset"}, style:STYLE(),
+                  wheelSensitivity:0.3, maxZoom:2.5, minZoom:0.05});
+  if (view === "arch" && cy.nodes().length) cy.layout({name:"cose", animate:false, nodeRepulsion:9000, idealEdgeLength:110, fit:true, padding:30}).run();
+  if (vp && view === "proc") cy.viewport(vp); else { cy.fit(undefined, 40); if (cy.zoom() > 1.2) { cy.zoom(1.2); cy.center(); } }
+  cy.on("tap", "node", e => onTapNode(e.target));
+  cy.on("tap", e => { if (e.target === cy) { cancelRel(); sel = null; renderSide(); } });
+  cy.on("dbltap", e => { if (e.target === cy && view === "proc") addNode(e.position); });
+  cy.on("dragfree", "node[design]", e => {
+    const n = nodeById(e.target.id()), first = e.target.children()[0];
+    n.pos = first ? {x:first.position().x, y:first.position().y - PAD_TOP} : {...e.target.position()};
+    save();
+  });
+  if (sel) cy.$id(sel).select();
+  renderLegend();
+}
+function renderLegend() {
+  const item = (c, t) => `<span><i style="background:var(--${c})"></i>${t}</span>`;
+  $("#legend").innerHTML = view === "proc"
+    ? item("process", "Processo") + item("system", "Sistema") + item("entity", "Entidade") + "<span>│</span>" + item("scene", "cena") + item("script", "script") + item("data", "dados") + item("bad", "faltando") + "<span>⚠ = arquivos mudaram, revisar</span>"
+    : `<button id="lCode" class="${layers.code ? "on" : ""}" title="Herança e preload entre scripts">Código</button>
+       <button id="lFile" class="${layers.file ? "on" : ""}" title="Cenas/recursos que usam scripts, cenas e recursos">Arquivos</button>` +
+      item("scene", "cena") + item("script", "script") + item("data", "dados") + item("bad", "faltando");
+  for (const k of ["code", "file"]) { const b = $("#l" + k[0].toUpperCase() + k.slice(1)); if (b) b.onclick = () => { layers[k] = !layers[k]; renderGraph(true); }; }
+}
+function setView(v) { view = v; $("#vProc").classList.toggle("on", v === "proc"); $("#vArch").classList.toggle("on", v === "arch"); sel = null; renderGraph(true); renderSide(); }
+$("#vProc").onclick = () => setView("proc");
+$("#vArch").onclick = () => setView("arch");
+
+function cancelRel() { relFrom = null; $("#bRel").classList.remove("on"); $("#bRel").textContent = "Relacionar…"; }
+function onTapNode(n) {
+  if (relFrom) {
+    const t = n.data("design") ? n : n.parent();
+    if (t.length && t.id() !== relFrom) {
+      const label = prompt(`Relação de “${nodeById(relFrom).label}” para “${nodeById(t.id()).label}” (ex.: exemplo, usa, pertence a):`, "exemplo");
+      if (label) { D.relations.push({id:uid(), source:relFrom, target:t.id(), label}); nodeById(relFrom).edited = true; save(); }
+      cancelRel(); renderGraph(); return;
+    }
+  }
+  if (n.data("path")) return showFile(n.data("path"));
+  sel = n.id(); setTab("inspector");
+}
+function addNode(pos, label) {
+  label = label || prompt("Nome do nó:", "Novo nó"); if (!label) return null;
+  const n = {id:"d:" + uid(), label, notes:"", kind:"entity", edited:true, pos:pos ? {x:pos.x, y:pos.y} : null};
+  D.nodes.push(n); save(); sel = n.id; renderGraph(); setTab("inspector"); return n;
+}
+function linkFile(nodeId, path) {
+  if (D.links.some(l => l.node === nodeId && l.file === path)) return flash("Esse arquivo já está ligado a esse nó");
+  D.links.push({node:nodeId, file:path, role:roleOf(path), hash:IDX.files[path]?.hash}); nodeById(nodeId).edited = true; save(); renderGraph(); renderSide();
+  flash(`${base(path)} ligado a ${nodeById(nodeId).label}`);
+}
+const wrap = $("#graphwrap");
+wrap.addEventListener("dragover", e => e.preventDefault());
+wrap.addEventListener("drop", e => {
+  e.preventDefault();
+  const path = e.dataTransfer.getData("text/gg-file"); if (!path) return;
+  if (view !== "proc") setView("proc");
+  const r = $("#cy").getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  const hit = cy.nodes("[design]").filter(n => { const b = n.renderedBoundingBox(); return x >= b.x1 && x <= b.x2 && y >= b.y1 && y <= b.y2; }).last();
+  if (hit.length) return linkFile(hit.id(), path);
+  const pan = cy.pan(), z = cy.zoom();
+  const label = base(path).replace(/\.\w+$/, "").replace(/[_-]?data$/, "").replace(/(^|_)(\w)/g, (m, a, c) => (a ? " " : "") + c.toUpperCase());
+  const n = addNode({x:(x - pan.x) / z, y:(y - pan.y) / z}, label);
+  if (n) linkFile(n.id, path);
+});
+
+// ---------- Side panel ----------
+function setTab(t) { tab = t; document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t)); renderSide(); }
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => setTab(b.dataset.t));
+function renderSide() {
+  if (tab === "file") return openFile ? showFile(openFile, true) : ($("#pane").innerHTML = "<p class='tip'>Clique num arquivo (na lista da esquerda ou dentro de um cartão) para ver o conteúdo aqui.</p>");
+  if (tab === "context") return renderContext();
+  const n = nodeById(sel);
+  if (!n) return $("#pane").innerHTML = overview();
+  const links = linksOf(n.id), rels = D.relations.filter(r => r.source === n.id || r.target === n.id);
+  const lbl = id => esc(nodeById(id)?.label);
+  $("#pane").innerHTML = `
+    <div class="row"><input id="nLabel" value="${esc(n.label)}" title="Nome"><select id="nKind" title="Tipo">${KINDS.map(k => `<option value="${k}" ${k === (n.kind || "entity") ? "selected" : ""}>${KIND_PT[k]}</option>`).join("")}</select><button id="nDel" title="Apagar nó (os arquivos do Godot não são tocados)">Apagar</button></div>
+    <p class="tip">${n.edited ? "✔ Editado por você: a IA não vai sobrescrever." : "Criado pela IA. Se você editar, fica protegido contra sobrescrita."}</p>
+    ${staleOf(n.id).length ? `<div style="border:1px dashed #f0a020;border-radius:4px;padding:6px 8px;margin:6px 0">
+      <b style="color:#f0a020">⚠ Arquivos mudaram desde a última revisão</b>
+      <p class="tip">Confira se os passos ainda valem. Os agentes também recebem este aviso.</p>
+      ${staleOf(n.id).map(f => `<div class="link" data-open="${esc(f)}">${esc(f.slice(6))}</div>`).join("")}
+      <button id="nReviewed" style="margin-top:6px">✔ Marcar como revisado</button></div>` : ""}
+    <h3>Descrição</h3><textarea id="nNotes" placeholder="O que é, quando usar, o que todo item desse tipo precisa ter…">${esc(n.notes)}</textarea>
+    <h3>Passos (um por linha)</h3><textarea id="nSteps" placeholder="Criar a cena herdando base_enemy.tscn&#10;Criar o script com class_name X extends BaseEnemy">${esc((n.steps || []).join("\n"))}</textarea>
+    <h3>Arquivos ligados</h3><p class="tip">O texto é o que aparece na conexão. Para ligar mais, arraste da lista da esquerda.</p>
+    ${links.map((l, i) => `<div class="row">
+      <input class="llabel" data-i="${i}" value="${esc(l.label || "")}" placeholder="${esc(ROLE_PT[l.role] || l.role)}" title="Texto da conexão" style="flex:0 0 140px">
+      <span class="link ${IDX.files[l.file] ? "" : "missing"}" data-open="${esc(l.file)}" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.file)}">${esc(l.file.slice(6))}${IDX.files[l.file] ? "" : " (faltando)"}</span>
+      <button data-unlink="${i}" title="Desligar">×</button></div>`).join("") || "<p class='tip'>Nenhum arquivo ainda.</p>"}
+    <h3>Relações</h3>${rels.map(r => `<div class="row"><span style="flex:1">${lbl(r.source)} → <b>${esc(r.label)}</b> → ${lbl(r.target)}</span><button data-unrel="${r.id}" title="Remover relação">×</button></div>`).join("") || "<p class='tip'>Use o botão “Relacionar…” no topo.</p>"}
+    <h3>IA</h3><button id="nCtx">Ver o contexto deste nó</button>`;
+  const edit = (fn, redraw) => e => { fn(e.target.value); n.edited = true; save(); if (redraw) renderGraph(); };
+  $("#nLabel").onchange = edit(v => n.label = v, 1);
+  $("#nKind").onchange = edit(v => n.kind = v, 1);
+  $("#nNotes").onchange = edit(v => n.notes = v);
+  $("#nSteps").onchange = edit(v => n.steps = v.split("\n").map(x => x.replace(/^\s*\d+[.)]\s*/, "").trim()).filter(Boolean));
+  $("#pane").querySelectorAll(".llabel").forEach(i => i.onchange = edit(v => links[i.dataset.i].label = v, 1));
+  $("#nDel").onclick = () => { if (!confirm(`Apagar “${n.label}”?\nOs arquivos do Godot não são tocados, e a IA não vai recriar este nó.`)) return;
+    D.nodes = D.nodes.filter(x => x !== n); D.links = D.links.filter(l => l.node !== n.id);
+    D.relations = D.relations.filter(r => r.source !== n.id && r.target !== n.id); (D.deleted ??= []).push(n.id); sel = null; save(); renderGraph(); renderSide(); };
+  $("#nCtx").onclick = () => setTab("context");
+  $("#nReviewed")?.addEventListener("click", () => { links.forEach(l => { if (IDX.files[l.file]?.hash) l.hash = IDX.files[l.file].hash; }); save(); renderGraph(); renderSide(); flash("Marcado como revisado"); });
+  $("#pane").querySelectorAll("[data-unlink]").forEach(b => b.onclick = () => { D.links = D.links.filter(l => l !== links[b.dataset.unlink]); n.edited = true; save(); renderGraph(); renderSide(); });
+  $("#pane").querySelectorAll("[data-unrel]").forEach(b => b.onclick = () => { D.relations = D.relations.filter(r => r.id !== b.dataset.unrel); n.edited = true; save(); renderGraph(); renderSide(); });
+}
+function overview() {
+  const p = IDX.project, c = {};
+  Object.values(IDX.files).forEach(f => c[f.kind] = (c[f.kind] || 0) + 1);
+  const group = k => D.nodes.filter(n => (n.kind || "entity") === k).sort((a, b) => a.label.localeCompare(b.label));
+  const list = k => group(k).map(n => `<div class="item" data-go="${esc(n.id)}"><span class="dot" style="background:var(--${k})"></span>${esc(n.label)}${staleOf(n.id).length ? ' <span style="color:#f0a020">⚠</span>' : ""}<span class="tip" style="margin-left:auto">${linksOf(n.id).length} arq.</span></div>`).join("");
+  const empty = !D.nodes.length ? `<p class="tip">Ainda não há nós. Rode <b>/gamephy</b> no Claude Code para a IA montar o grafo, ou crie nós com <b>+ Nó</b>.</p>` : "";
+  return `<h2>${esc(p.name || "Projeto Godot")}</h2>${empty}
+    ${KINDS.map(k => group(k).length ? `<h3>${KIND_PT[k]}s (${group(k).length})</h3><div class="list">${list(k)}</div>` : "").join("")}
+    <h3>Projeto</h3><table><tr><td>Pasta</td><td>${esc(IDX.root)}</td></tr><tr><td>Cena principal</td><td>${p.main_scene ? `<span class="link" data-open="${esc(p.main_scene)}">${esc(p.main_scene)}</span>` : "—"}</td></tr>
+    ${Object.entries(p.autoloads || {}).map(([k, v]) => `<tr><td>Autoload ${esc(k)}</td><td><span class="link" data-open="${esc(v)}">${esc(v)}</span></td></tr>`).join("")}
+    ${Object.entries(c).map(([k, v]) => `<tr><td>${esc(FILEKIND_PT[k] || k)}</td><td>${v}</td></tr>`).join("")}<tr><td>Classes</td><td>${Object.keys(IDX.classes).length}</td></tr><tr><td>Ligações detectadas</td><td>${IDX.edges.length}</td></tr></table>`;
+}
+$("#pane").addEventListener("click", e => {
+  const go = e.target.closest("[data-go]")?.dataset.go;
+  if (go) { focusNode(go); return; }
+  const p = e.target.closest("[data-open]")?.dataset.open; if (p && !e.target.closest(".row")) showFile(p);
+});
+$("#pane").addEventListener("click", e => { const p = e.target.closest(".row [data-open]")?.dataset.open; if (p) showFile(p); });
+function focusNode(id) {
+  if (view !== "proc") setView("proc");
+  sel = id; cy.$(":selected").unselect(); const n = cy.$id(id).select();
+  cy.animate({center:{eles:n}, zoom:Math.max(cy.zoom(), 0.9)}, {duration:300}); setTab("inspector");
+}
+$("#find").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const q = e.target.value.toLowerCase().trim(); if (!q) return;
+  const n = D.nodes.find(n => n.label.toLowerCase().includes(q));
+  if (n) focusNode(n.id); else flash("Nenhum nó encontrado");
+});
+
+// ---------- Viewers ----------
+const KW = /^(func|var|const|signal|class|class_name|extends|if|elif|else|for|while|match|return|pass|break|continue|and|or|not|in|is|as|self|super|true|false|null|static|enum|await|preload|load|void|onready|export|tool|yield)$/;
+function highlight(line) {
+  return line.replace(/(#.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(@\w+)|(\b\d+(?:\.\d+)?\b)|(\b[A-Za-z_]\w*\b)(?=\s*\()|(\b[A-Za-z_]\w*\b)|([^#"'@\w]+)/g,
+    (m, com, str, ann, num, fn, word, other) =>
+      com ? `<span class="t-com">${esc(com)}</span>` : str ? `<span class="t-str">${esc(str)}</span>` : ann ? `<span class="t-ann">${esc(ann)}</span>`
+      : num ? `<span class="t-num">${num}</span>` : fn ? (KW.test(fn) ? `<span class="t-kw">${fn}</span>` : `<span class="t-fn">${fn}</span>`)
+      : word ? (KW.test(word) ? `<span class="t-kw">${word}</span>` : word) : esc(other));
+}
+function codeBlock(text, hl, q) {
+  return `<div class="code">${text.split("\n").map((l, i) => `<div id="L${i + 1}" class="${q && l.toLowerCase().includes(q) ? "hit" : ""}"><span class="ln">${i + 1}</span>${hl ? highlight(l) : esc(l)}</div>`).join("")}</div>`;
+}
+const backlinks = p => {
+  const nodes = D.links.filter(l => l.file === p).map(l => `<span class="chip link" data-go="${esc(l.node)}">${esc(nodeById(l.node)?.label)} · ${esc(l.label || ROLE_PT[l.role] || l.role)}</span>`);
+  const det = IDX.edges.filter(e => e.source === p || e.target === p).map(e => e.source === p
+    ? `<div>→ ${esc(EDGE_PT[e.type] || e.type)} <span class="link ${e.missing ? "missing" : ""}" data-open="${esc(e.target)}">${esc(e.target)}</span></div>`
+    : `<div>← <span class="link" data-open="${esc(e.source)}">${esc(e.source)}</span> ${esc(EDGE_PT[e.type] || e.type)} este</div>`);
+  return (nodes.length ? `<h3>Usado nos nós</h3>${nodes.join("")}` : "") + (det.length ? `<h3>Ligações detectadas</h3>${det.join("")}` : "");
+};
+const propsTable = o => `<table>${Object.entries(o || {}).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v.length > 300 ? v.slice(0, 300) + "…" : v)}</td></tr>`).join("")}</table>`;
+async function showFile(p, keepTab) {
+  openFile = p; if (!keepTab) { tab = "file"; document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === "file")); }
+  document.querySelectorAll(".file").forEach(el => el.classList.toggle("sel", el.dataset.p === p));
+  const f = await api("/api/file?path=" + encodeURIComponent(p));
+  if (f.error) return $("#pane").innerHTML = `<p class="missing">${esc(p)}: arquivo não encontrado no projeto.</p>${backlinks(p)}`;
+  let body = "", P = f.parsed;
+  const head = `<h2>${esc(base(p))}</h2><div class="tip">${esc(p)} · ${esc(FILEKIND_PT[f.kind] || f.kind)} · ${f.size} bytes</div>${backlinks(p)}`;
+  if (f.kind === "scene" && P) {
+    body = `<h3>Árvore da cena</h3><p class="tip">Clique num nó para ver as propriedades. 📜 = tem script · 🔗 = instância de outra cena</p>
+      ${P.nodes.map((n, i) => `<div class="tree-n" data-ni="${i}">${"  ".repeat(n.path === "." ? 0 : n.path.split("/").length)}${n.path === "." ? "" : "├ "}${esc(n.name)} <span class="ty">(${esc(n.type)})</span>${n.script ? " 📜" : ""}${n.instance ? " 🔗" : ""}</div>`).join("")}
+      <div id="nodeProps"></div>
+      <h3>Recursos externos</h3>${P.ext_resources.map(e => `<div><span class="chip">${esc(e.type)}</span><span class="link" data-open="${esc(e.path)}">${esc(e.path)}</span></div>`).join("") || "—"}
+      ${P.ext_resources.filter(e => /Texture/.test(e.type || "")).map(e => `<img src="/api/raw?path=${encodeURIComponent(e.path)}" style="max-width:96px;max-height:96px;margin:4px;image-rendering:pixelated;border:1px solid var(--line)">`).join("")}
+      <h3>Sub-recursos</h3>${P.sub_resources.map(s => `<div><span class="chip">${esc(s.type)}</span>${esc(s.id)}</div>`).join("") || "—"}
+      <h3>Conexões de sinais</h3>${P.connections.map(c => `<div>${esc(c.from)}.${esc(c.signal)} → ${esc(c.to)}.${esc(c.method)}</div>`).join("") || "—"}
+      <h3>Código-fonte</h3>${codeBlock(f.text)}`;
+  } else if (f.kind === "script" && P) {
+    body = `<table><tr><td>class_name</td><td>${esc(P.class_name || "—")}</td></tr><tr><td>herda de</td><td>${IDX.classes[P.extends] ? `<span class="link" data-open="${esc(IDX.classes[P.extends])}">${esc(P.extends)}</span>` : esc(P.extends || "—")}</td></tr>
+      <tr><td>sinais</td><td>${P.signals.map(s => esc(s.name)).join(", ") || "—"}</td></tr>
+      <tr><td>exportadas</td><td>${P.variables.filter(v => v.exported).map(v => `<a class="link" href="#L${v.line}">${esc(v.name)}</a>: ${esc(v.type || "?")}${v.default ? " = " + esc(v.default) : ""}`).join("<br>") || "—"}</td></tr>
+      <tr><td>variáveis</td><td>${P.variables.filter(v => !v.exported).map(v => `<a class="link" href="#L${v.line}">${esc(v.name)}</a>`).join(", ") || "—"}</td></tr>
+      <tr><td>funções</td><td>${P.functions.map(fn => `<a class="link" href="#L${fn.line}">${esc(fn.name)}</a>`).join(", ") || "—"}</td></tr></table>
+      <div class="row" style="margin-top:8px"><input id="q" placeholder="Buscar no arquivo…"><span id="qn" class="tip"></span></div><div id="src">${codeBlock(f.text, true)}</div>`;
+  } else if (f.kind === "resource" && P) {
+    body = `<table><tr><td>Tipo</td><td>${esc(P.type)}</td></tr><tr><td>Base</td><td>${esc(P.base_type)}</td></tr>${P.script ? `<tr><td>Script</td><td><span class="link" data-open="${esc(P.script)}">${esc(P.script)}</span></td></tr>` : ""}</table>
+      <h3>Propriedades</h3>${propsTable(P.properties)}<h3>Código-fonte</h3>${codeBlock(f.text)}`;
+  } else if (f.kind === "image") body = `<img src="/api/raw?path=${encodeURIComponent(p)}" style="max-width:100%;image-rendering:pixelated">`;
+  else if (f.kind === "audio") body = `<audio controls src="/api/raw?path=${encodeURIComponent(p)}"></audio>`;
+  else if (f.text != null) body = codeBlock(f.text, f.kind === "shader");
+  else body = `<p class="tip">Arquivo binário: não dá para ler. Salve como .tres/.tscn no Godot para inspecionar.</p>`;
+  $("#pane").innerHTML = head + body;
+  $("#pane").querySelectorAll("[data-ni]").forEach(el => el.onclick = () => {
+    const n = P.nodes[el.dataset.ni];
+    $("#nodeProps").innerHTML = `<h3>Propriedades de ${esc(n.name)}</h3>${propsTable({tipo:n.type, ...(n.script && {script:n.script}), ...(n.instance && {instância:n.instance}), ...(n.groups && {grupos:n.groups}), ...n.props})}`;
+  });
+  const q = $("#q"); if (q) q.oninput = () => {
+    const s = q.value.toLowerCase(); $("#src").innerHTML = codeBlock(f.text, true, s);
+    const hits = $("#src").querySelectorAll(".hit"); $("#qn").textContent = s ? hits.length + " resultados" : ""; hits[0]?.scrollIntoView({block:"center"});
+  };
+}
+
+// ---------- Agent context ----------
+async function renderContext() {
+  const n = nodeById(sel);
+  $("#pane").innerHTML = `<p class="tip">${n ? "Detalhe deste nó, com cenas, scripts e dados. É o que um agente recebe ao trabalhar nele." : "Mapa do jogo inteiro (gamegraph-out/CONTEXT.md). É o que todo agente lê primeiro. Selecione um nó para ver o detalhe dele."}</p>
+    <div class="row"><b style="flex:1">${n ? esc(n.label) : "Jogo inteiro"}</b><label><input type="checkbox" id="cCode"> incluir código</label><button id="cCopy">Copiar</button></div><pre class="ctx" id="ctx">…</pre>`;
+  const go = async () => $("#ctx").textContent = await api(`/api/context?node=${encodeURIComponent(sel || "")}&code=${$("#cCode").checked ? 1 : 0}`);
+  $("#cCode").onchange = go; $("#cCopy").onclick = () => { navigator.clipboard.writeText($("#ctx").textContent); flash("Copiado"); }; go();
+}
+$("#bCtx").onclick = () => { sel = null; cy.$(":selected").unselect(); setTab("context"); };
+$("#bRules").onclick = () => {
+  setTab("inspector"); sel = null;
+  $("#pane").innerHTML = `<h2>Regras e instruções</h2><p class="tip">Isso aparece no topo do contexto de todo agente. Ao editar aqui, a IA não sobrescreve mais.</p>
+    <h3>Regras do jogo</h3><textarea id="rr" style="min-height:140px" placeholder="- Todo inimigo herda BaseEnemy&#10;- Status ficam em .tres, nunca no código">${esc(D.rules)}</textarea>
+    <h3>Instruções para os agentes</h3><textarea id="ri" style="min-height:140px" placeholder="Antes de criar algo, siga o PROCESSO correspondente.">${esc(D.instructions)}</textarea>`;
+  $("#rr").onchange = e => { D.rules = e.target.value; D.rules_edited = true; save(); };
+  $("#ri").onchange = e => { D.instructions = e.target.value; D.instructions_edited = true; save(); };
+};
+
+// ---------- Toolbar ----------
+$("#bAdd").onclick = () => { if (view !== "proc") setView("proc"); const ex = cy.extent(); addNode({x:(ex.x1 + ex.x2) / 2, y:(ex.y1 + ex.y2) / 2}); };
+$("#bRel").onclick = () => {
+  if (relFrom) return cancelRel();
+  if (!sel || !nodeById(sel)) return flash("Primeiro clique no cartão de origem");
+  relFrom = sel; $("#bRel").classList.add("on"); $("#bRel").textContent = "Clique no destino… (Esc cancela)";
+};
+$("#bOrg").onclick = () => { if (!confirm("Reorganizar todos os cartões em grade? As posições atuais serão perdidas.")) return; autoLayout(false); save(); if (view !== "proc") setView("proc"); else renderGraph(true); };
+$("#bFit").onclick = () => cy.fit(undefined, 30);
+async function rescan(auto) {
+  IDX = await api("/api/rescan"); renderTree(); renderGraph(); if (tab !== "file") renderSide();
+  flash(auto ? "Projeto mudou: reindexado" : "Projeto reescaneado");
+}
+$("#bRescan").onclick = () => rescan();
+// watcher: polls for file changes; the design (your graph) is never touched by rescans
+setInterval(async () => { if (document.hidden || !IDX) return; const s = await api("/api/signature"); if (s.signature !== IDX.signature) rescan(true); }, 4000);
+
+// ---------- Guide ----------
+function openGuide() { $("#guide").style.display = "flex"; }
+function closeGuide() { $("#guide").style.display = "none"; try { localStorage.setItem("gg-guide-seen", "1"); } catch (e) {} }
+$("#help").onclick = openGuide; $("#gClose").onclick = closeGuide;
+$("#guide").onclick = e => { if (e.target.id === "guide") closeGuide(); };
+document.querySelectorAll("#guide nav a").forEach(a => a.onclick = () => document.getElementById(a.dataset.g).scrollIntoView({behavior:"smooth"}));
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeGuide(); cancelRel(); } });
+
+new ResizeObserver(() => cy?.resize()).observe($("#graphwrap"));
+load();
+</script>
+</body>
+</html>

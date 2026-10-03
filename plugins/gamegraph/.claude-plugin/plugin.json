@@ -1,0 +1,10 @@
+{
+  "name": "gamegraph",
+  "version": "1.0.0",
+  "description": "GameGraph by MadDev Studios: a IA mapeia como o seu jogo Godot é feito (processos, passos e arquivos reais), você edita numa interface visual e os agentes seguem o mapa. Use /gamephy.",
+  "author": {
+    "name": "MadDev Studios"
+  },
+  "keywords": ["godot", "gamedev", "gdscript", "knowledge-graph", "agents"],
+  "license": "MIT"
+}
